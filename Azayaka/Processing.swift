@@ -61,9 +61,16 @@ extension AppDelegate: SCRecordingOutputDelegate {
         }
         vW.finishWriting {
             self.startTime = nil
+            self.copyFileToClipboard(fileURL: self.vW.outputURL)
             dispatchGroup.leave()
         }
         dispatchGroup.wait()
+    }
+
+    func copyFileToClipboard(fileURL: URL) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()  // Clear the pasteboard
+        pasteboard.writeObjects([fileURL as NSURL])  // Copy the file URL to clipboard
     }
 
     func stream(_ stream: SCStream, didStopWithError error: Error) { // stream error
