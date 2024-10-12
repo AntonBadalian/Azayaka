@@ -30,9 +30,9 @@ jobs:
 
       - name: Archive app
         run: |
-          ls -a
-          ls -a /
-          ls -a ./build_output
+          # ls -a
+          # ls -a /
+          # ls -a ./build_output
           rm -rf build/artifacts
           mkdir -p build/artifacts
           cp -r ./build_output build/artifacts/
