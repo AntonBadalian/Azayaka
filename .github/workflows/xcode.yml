@@ -35,11 +35,13 @@ jobs:
           # ls -a ./build_output
           rm -rf build/artifacts
           mkdir -p build/artifacts
-          cp -r ./build_output build/artifacts/
+          # cp -r ./build_output build/artifacts/
+          
+          zip -r build/artifacts/artifacts.zip ./build_output
           ls -a build/artifacts/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: release-artifacts
-          path: /build/artifacts/
+          path: /build/artifacts/artifacts.zip
