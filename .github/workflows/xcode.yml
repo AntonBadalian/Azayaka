@@ -27,11 +27,13 @@ jobs:
           -verbose \
           CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
-      # - name: Archive app
-      #   run: |
-      #     rm -rf build/artifacts
-      #     mkdir -p build/artifacts
-      #     cp -r ./build/Release/* build/artifacts/
+      - name: Archive app
+        run: |
+          ls -a
+          ls -a /
+          rm -rf build/artifacts
+          mkdir -p build/artifacts
+          cp -r ./build/Release/* build/artifacts/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
