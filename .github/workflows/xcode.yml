@@ -1,0 +1,37 @@
+name: macOS App Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: |
+          sudo xcode-select -switch /Applications/Xcode.app
+          xcodebuild -version
+
+      - name: Build macOS app
+        run: |
+          xcodebuild -scheme YourSchemeName \
+          -sdk macosx \
+          -configuration Release \
+          clean build \
+          CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+
+      - name: Archive app
+        run: |
+          mkdir -p build/artifacts
+          cp -r ./build/Release/YourApp.app build/artifacts/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: mac-app
+          path: build/artifacts/YourApp.app
