@@ -25,7 +25,6 @@ struct MenuBar: View {
                         .foregroundStyle(.red)
                     Text(recordingLength)
                         .offset(y: -0.5)
-                        .monospacedDigit()
                 } else {
                     Image("menuBarIcon")
                 }

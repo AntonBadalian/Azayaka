@@ -17,14 +17,14 @@ extension AppDelegate: NSMenuDelegate {
         if streamType != nil { // recording?
             var typeText = ""
             if screen != nil {
-                let fallbackName = String(format: "Display %lld".local, (availableContent?.displays.firstIndex(where: { $0.displayID == screen?.displayID }) ?? -1)+1)
+                let fallbackName = "Display ".local + String((availableContent?.displays.firstIndex(where: { $0.displayID == screen?.displayID }) ?? -1)+1)
                 typeText = NSScreen.screens.first(where: { $0.displayID == screen?.displayID })?.localizedName ?? fallbackName
             } else if window != nil {
                 typeText = window?.owningApplication?.applicationName.uppercased() ?? "A window".local
             } else {
                 typeText = "System Audio".local
             }
-            menu.addItem(header(String(format: "Recording %@".local, typeText), size: 12))
+            menu.addItem(header("Recording ".local + typeText, size: 12))
 
             menu.addItem(NSMenuItem(title: "Stop Recording".local, action: #selector(stopRecording), keyEquivalent: ""))
             menu.addItem(NSMenuItem.separator())
@@ -39,7 +39,7 @@ extension AppDelegate: NSMenuDelegate {
             menu.addItem(header("Displays".local))
 
             for (i, display) in availableContent!.displays.enumerated() {
-                let screenName = NSScreen.screens.first(where: { $0.displayID == display.displayID })?.localizedName ?? String(format: "Display %lld".local, "\(i+1)")
+                let screenName = NSScreen.screens.first(where: { $0.displayID == display.displayID })?.localizedName ?? "Display ".local + "\(i+1)"
                 let displayItem = NSMenuItem(title: "Unknown Display".local, action: #selector(prepRecord), keyEquivalent: "")
                 let displayName = screenName + (display.displayID == CGMainDisplayID() ? " (Main)".local : "") + " "
                 let displayNameStr = NSMutableAttributedString(string: displayName)
@@ -64,7 +64,12 @@ extension AppDelegate: NSMenuDelegate {
             menu.addItem(noneAvailable)
         }
 
-        addMenuFooter(toMenu: menu)
+        menu.addItem(NSMenuItem.separator())
+        if let updateNotice = UpdateHandler.createUpdateNotice() {
+            menu.addItem(updateNotice)
+        }
+        menu.addItem(NSMenuItem(title: "Preferences…".local, action: #selector(openPreferences), keyEquivalent: ","))
+        menu.addItem(NSMenuItem(title: "Quit Azayaka".local, action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
     }
 
@@ -91,10 +96,7 @@ extension AppDelegate: NSMenuDelegate {
 
         // add valid windows which are not yet in the list
         let addedItems = menu.items.compactMap { $0.identifier?.rawValue == "window" ? $0.title : "" }
-        for window in validWindows.filter({
-            !addedItems.contains($0.windowID.description) &&
-            ($0.owningApplication?.applicationName ?? "") + ($0.owningApplication?.bundleIdentifier ?? "") != "" // exclude apps which have no name or bundles, like the app for the "Menubar" window
-        }) {
+        for window in validWindows.filter({ !addedItems.contains($0.windowID.description) }) {
             newWindow(window: window)
         }
     }
@@ -104,7 +106,7 @@ extension AppDelegate: NSMenuDelegate {
             let icon = NSWorkspace.shared.icon(forFile: appURL.path)
             return icon
         }
-        return NSImage(systemSymbolName: "questionmark.app.dashed", accessibilityDescription: "application icon".local)
+        return nil
     }
     
     func getScreenWithMouse() -> NSScreen? {
@@ -121,17 +123,17 @@ extension AppDelegate: NSMenuDelegate {
         subMenuItem.attributedTitle = getFancyWindowString(window: window)
         subMenuItem.title = String(window.windowID)
         subMenuItem.identifier = NSUserInterfaceItemIdentifier("window")
-        subMenuItem.setAccessibilityLabel(String(format: "Window title: %@".local, (window.title ?? "No title".local))) // VoiceOver will otherwise read the window ID (the item's non-attributed title)
+        subMenuItem.setAccessibilityLabel("Window title: ".local + (window.title ?? "No title".local)) // VoiceOver will otherwise read the window ID (the item's non-attributed title)
 
         if let item = menu.items.first(where: { ($0.title == appBundleIdentifier) && $0.identifier?.rawValue ?? "" == "application" }) {
             item.submenu?.addItem(subMenuItem)
         } else {
-            if !ud.bool(forKey: Preferences.kFrontApp) {
+            if !ud.bool(forKey: Preferences.frontAppKey) {
                 let app = NSMenuItem(title: "Unknown".local, action: nil, keyEquivalent: "")
                 app.attributedTitle = getAppNameAttachment(window: window)
-                app.title = appBundleIdentifier // if the title isn't placed after the attributed, getting the title will return the attributedTitle
+                app.title = appBundleIdentifier // if the title isn't placed after, getting the title will return the attributedTitle
                 app.identifier = NSUserInterfaceItemIdentifier("application")
-                app.setAccessibilityLabel(String(format: "App name: %@".local, appName)) // VoiceOver will otherwise read the app bundle identifier (the item's non-attributed title)
+                app.setAccessibilityLabel("App name: ".local + appName) // VoiceOver will otherwise read the app bundle identifier (the item's non-attributed title)
                 let subMenu = NSMenu()
                 subMenu.addItem(subMenuItem)
                 app.submenu = subMenu
@@ -157,9 +159,9 @@ extension AppDelegate: NSMenuDelegate {
         let imageAttachment = NSTextAttachment()
         imageAttachment.image = NSImage(systemSymbolName: "macwindow", accessibilityDescription: "window icon".local)
         let imageString = NSAttributedString(attachment: imageAttachment)
-
+        
         let str = NSAttributedString(string: " " + (window.title ?? "No title".local))//, attributes: [.font: NSFont.systemFont(ofSize: 12, weight: .regular), .foregroundColor: NSColor.secondaryLabelColor])
-
+        
         let output = NSMutableAttributedString()
         output.append(imageString)
         output.append(str)
@@ -175,15 +177,6 @@ extension AppDelegate: NSMenuDelegate {
             headerItem.attributedTitle = NSAttributedString(string: title.uppercased(), attributes: [.font: NSFont.systemFont(ofSize: size, weight: .heavy)])
         }
         return headerItem
-    }
-
-    func addMenuFooter(toMenu menu: NSMenu) {
-        menu.addItem(NSMenuItem.separator())
-        if let updateNotice = UpdateHandler.createUpdateNotice() {
-            menu.addItem(updateNotice)
-        }
-        menu.addItem(NSMenuItem(title: "Preferences…".local, action: #selector(openPreferences), keyEquivalent: ","))
-        menu.addItem(NSMenuItem(title: "Quit Azayaka".local, action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
     func menuWillOpen(_ menu: NSMenu) {
@@ -210,21 +203,5 @@ extension AppDelegate: NSMenuDelegate {
 
     @objc func openUpdatePage() {
         NSWorkspace.shared.open(URL(string: UpdateHandler.updateURL)!)
-    }
-}
-
-class NSMenuItemWithIcon: NSMenuItem {
-    init(icon: String, title: String, action: Selector?, keyEquivalent: String = "") {
-        super.init(title: title, action: action, keyEquivalent: keyEquivalent)
-        let attr = NSMutableAttributedString()
-        let imageAttachment = NSTextAttachment()
-        imageAttachment.image = NSImage(systemSymbolName: icon, accessibilityDescription: nil) // todo: consider a11y?
-        attr.append(NSAttributedString(attachment: imageAttachment))
-        attr.append(NSAttributedString(string: " \(title)"))
-        self.attributedTitle = attr
-    }
-
-    required init(coder: NSCoder) {
-        fatalError("init(coder:) is not a thing")
     }
 }

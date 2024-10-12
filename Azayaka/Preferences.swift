@@ -9,31 +9,13 @@ import SwiftUI
 import AVFAudio
 import AVFoundation
 import KeyboardShortcuts
-import ScreenCaptureKit
 import ServiceManagement
 
 struct Preferences: View {
-    static let kFrameRate       = "frameRate"
-    static let kHighResolution  = "highRes"
-    static let kVideoQuality    = "videoQuality"
-    static let kVideoFormat     = "videoFormat"
-    static let kEncoder         = "encoder"
-    static let kEnableHDR       = "enableHDR"
-    static let kHideSelf        = "hideSelf"
-    static let kFrontApp        = "frontAppOnly"
-    static let kShowMouse       = "showMouse"
-
-    static let kAudioFormat     = "audioFormat"
-    static let kAudioQuality    = "audioQuality"
-    static let kRecordMic       = "recordMic"
-
-    static let kFileName        = "outputFileName"
-    static let kSaveDirectory   = "saveDirectory"
-
-    static let kUpdateCheck     = "updateCheck"
-    static let kCountdownSecs   = "countDown"
-    static let kUseKorai        = "useLegacyRecorder"
-
+    static let updateCheck = "updateCheck"
+    static let frontAppKey = "frontAppOnly"
+    static let fileName = "outputFileName"
+    
     var body: some View {
         VStack {
             TabView {
@@ -61,18 +43,14 @@ struct Preferences: View {
     }
 
     struct VideoSettings: View {
-        @AppStorage(kFrameRate)         private var frameRate: Int = 60
-        @AppStorage(kHighResolution)    private var highRes: Bool = true
-        @AppStorage(kVideoQuality)      private var videoQuality: Double = 1.0
-        @AppStorage(kVideoFormat)       private var videoFormat: VideoFormat = .mp4
-        @AppStorage(kEncoder)           private var encoder: Encoder = .h264
-        @AppStorage(kEnableHDR)         private var enableHDR: Bool = true
-        @AppStorage(kHideSelf)          private var hideSelf: Bool = false
-        @AppStorage(kFrontApp)          private var frontApp: Bool = false
-        @AppStorage(kShowMouse)         private var showMouse: Bool = true
-
-        @AppStorage(kUseKorai)          private var useLegacyRecorder: Bool = false
-        @State private var hoveringWarning: Bool = false
+        @AppStorage("frameRate")    private var frameRate: Int = 60
+        @AppStorage("videoQuality") private var videoQuality: Double = 1.0
+        @AppStorage("videoFormat")  private var videoFormat: VideoFormat = .mp4
+        @AppStorage("encoder")      private var encoder: Encoder = .h264
+        @AppStorage("highRes")      private var highRes: Bool = true
+        @AppStorage(frontAppKey)    private var frontApp: Bool = false
+        @AppStorage("hideSelf")     private var hideSelf: Bool = false
+        @AppStorage("showMouse")    private var showMouse: Bool = true
 
         var body: some View {
             GroupBox() {
@@ -83,79 +61,44 @@ struct Preferences: View {
                         Text("25").tag(25)
                         Text("24").tag(24)
                         Text("15").tag(15)
-                    }.padding(.trailing, 25)
+                    }.padding([.leading, .trailing], 10)
                     Picker("Resolution", selection: $highRes) {
                         Text("Auto").tag(true)
                         Text("Low (1x)").tag(false)
-                    }.padding(.trailing, 25)
-                    if useLegacyRecorder {
-                        Picker("Quality", selection: $videoQuality) {
-                            Text("Low").tag(0.3)
-                            Text("Medium").tag(0.7)
-                            Text("High").tag(1.0)
-                        }.padding(.trailing, 25)
-                    }
+                    }.padding([.leading, .trailing], 10)
+                    Picker("Quality", selection: $videoQuality) {
+                        Text("Low").tag(0.3)
+                        Text("Medium").tag(0.7)
+                        Text("High").tag(1.0)
+                    }.padding([.leading, .trailing], 10)
                     Picker("Format", selection: $videoFormat) {
                         Text("MOV").tag(VideoFormat.mov)
                         Text("MP4").tag(VideoFormat.mp4)
-                    }.padding(.trailing, 25)
-                    HStack {
-                        Picker("Encoder", selection: $encoder) {
-                            Text("H.264").tag(Encoder.h264)
-                            Text("H.265").tag(Encoder.h265)
-                        }.padding(.trailing, encoder == .h265 && !useLegacyRecorder && !deviceSupportsNonKoraiHEVC() ? 0 : 25)
-                        if #available(macOS 15, *), encoder == .h265 && !useLegacyRecorder && !deviceSupportsNonKoraiHEVC() {
-                            // This is truly awful.
-                            // For some reason my Intel Mac does not show H.265 as an available video codec when using SCRecordingOutputConfiguration.
-                            // I don't know why. Apple's sample code and demos show both H.264 and H.265 as available. I guess it might be the same as
-                            // with HDR, where Intel just throws a configuration error because it's not supported.
-                            // Warning the user if the same is likely to happen on their device is the best UI I could come up with. Alternatively you
-                            // could only list available ones (e.g. ["H.264", "H.264 (Legacy)", "H.265 (Legacy)"]), but I don't want to break UserDefaults/tags
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.yellow)
-                                .help(Text("It appears that your device might not support H.265 with Apple's recorder. You may have to switch to the legacy recorder found in the \"Other\" tab to use H.265."))
-                        }
-                    }
-                }.frame(maxWidth: 200).padding(10).padding(.leading, 30)
+                    }.padding([.leading, .trailing], 10)
+                    Picker("Encoder", selection: $encoder) {
+                        Text("H.264").tag(Encoder.h264)
+                        Text("H.265").tag(Encoder.h265)
+                    }.padding([.leading, .trailing], 10)
+                }.frame(maxWidth: 200).padding(10)
                 VStack(alignment: .leading) {
-                    // apparently HDR requires Apple Silicon -- https://github.com/xamarin/xamarin-macios/wiki/ScreenCaptureKit-macOS-xcode16.0-b1/89fe4157b4a46303192fa11d3db775baf0c9a543
-                    // will throw an invalid configuration error when attempted on intel
-                    if #available(macOS 15, *), utsname.isAppleSilicon {
-                        Toggle(isOn: $enableHDR) {
-                            Text("Record in HDR")
-                        }
-                    } else {
-                        Toggle(isOn: .constant(false)) {
-                            Text("Record in HDR")
-                        }.disabled(true)
-                        Text("Requires Apple Silicon running macOS Sequoia or newer.")
-                            .font(.footnote).foregroundColor(Color.gray)
-                    }
                     Toggle(isOn: $hideSelf) {
                         Text("Exclude Azayaka itself")
-                    }
+                    }.toggleStyle(CheckboxToggleStyle())
                     Toggle(isOn: $frontApp) {
                         Text("Only list focused app's windows")
-                    }
+                    }.toggleStyle(CheckboxToggleStyle())
                     Toggle(isOn: $showMouse) {
                         Text("Show mouse cursor")
-                    }
+                    }.toggleStyle(CheckboxToggleStyle())
                 }.frame(maxWidth: .infinity).padding([.leading, .trailing, .bottom], 10)
             }.padding(10)
-        }
-
-        func deviceSupportsNonKoraiHEVC() -> Bool {
-            if #available(macOS 15, *) {
-                return SCRecordingOutputConfiguration().availableVideoCodecTypes.contains(.hevc)
-            }
-            return false
         }
     }
 
     struct AudioSettings: View {
-        @AppStorage(kAudioFormat)  private var audioFormat: AudioFormat = .aac
-        @AppStorage(kAudioQuality) private var audioQuality: AudioQuality = .high
-        @AppStorage(kRecordMic)    private var recordMic: Bool = false
+        @AppStorage("audioFormat")  private var audioFormat: AudioFormat = .aac
+        @AppStorage("audioQuality") private var audioQuality: AudioQuality = .high
+        @AppStorage("recordMic")    private var recordMic: Bool = false
 
         var body: some View {
             GroupBox() {
@@ -185,17 +128,17 @@ struct Preferences: View {
                     if #available(macOS 14, *) { // apparently they changed onChange in Sonoma
                         Toggle(isOn: $recordMic) {
                             Text("Record microphone")
-                        }.onChange(of: recordMic) {
+                        }.toggleStyle(CheckboxToggleStyle()).onChange(of: recordMic) {
                             Task { await performMicCheck() }
                         }
                     } else {
                         Toggle(isOn: $recordMic) {
                             Text("Record microphone")
-                        }.onChange(of: recordMic) { _ in
+                        }.toggleStyle(CheckboxToggleStyle()).onChange(of: recordMic) { _ in
                             Task { await performMicCheck() }
                         }
                     }
-                    Text("Doesn't apply to system audio-only recordings. Uses the currently set input device. When using the legacy recorder, this will be written as a separate audio track.")
+                    Text("Doesn't apply to system audio-only recordings. The currently set input device will be used, and will be written as a separate audio track.")
                         .font(.footnote).foregroundColor(Color.gray)
                 }.frame(maxWidth: .infinity).padding(10)
             }.onAppear {
@@ -222,9 +165,10 @@ struct Preferences: View {
         }
     }
      
+     
     struct OutputSettings: View {
-        @AppStorage(kFileName)      private var fileName: String = "Recording at %t"
-        @AppStorage(kSaveDirectory) private var saveDirectory: String?
+        @AppStorage("saveDirectory") private var saveDirectory: String?
+        @AppStorage(fileName) private var _fileName: String = "Recording at %t"
         @State private var fileNameLength = 0
         private let dateFormatter = DateFormatter()
 
@@ -232,17 +176,15 @@ struct Preferences: View {
             VStack() {
                 GroupBox() {
                     VStack() {
-                        Form() {
-                            TextField("File name", text: $fileName).frame(maxWidth: 250)
-                                .onChange(of: fileName) { newText in
-                                    fileNameLength = getFileNameLength(newText)
-                                }
-                                .onAppear() {
-                                    dateFormatter.dateFormat = "y-MM-dd HH.mm.ss"
-                                    fileNameLength = getFileNameLength(fileName)
-                                }
-                                .foregroundStyle(fileNameLength > NAME_MAX ? .red : .primary)
-                        }
+                        TextField("File name", text: $_fileName).frame(maxWidth: 250)
+                            .onChange(of: _fileName) { newText in
+                                fileNameLength = getFileNameLength(newText)
+                            }
+                            .onAppear() {
+                                dateFormatter.dateFormat = "y-MM-dd HH.mm.ss"
+                                fileNameLength = getFileNameLength(_fileName)
+                            }
+                            .foregroundStyle(fileNameLength > NAME_MAX ? .red : .primary)
                         Text("\"%t\" will be replaced with the recording's start time.")
                             .font(.subheadline).foregroundColor(Color.gray)
                     }.padding(10).frame(maxWidth: .infinity)
@@ -250,8 +192,7 @@ struct Preferences: View {
                 GroupBox() {
                     VStack(spacing: 2) {
                         Button("Select output directory", action: updateOutputDirectory)
-                        Text(String(format: "Currently set to \"%@\"".local, (saveDirectory != nil) ? URL(fileURLWithPath: saveDirectory!).lastPathComponent : "an unknown path - please set a new one"))
-                            .font(.subheadline).foregroundColor(Color.gray)
+                        Text(String(format: "Currently set to \"%@\"".local, URL(fileURLWithPath: saveDirectory!).lastPathComponent)).font(.subheadline).foregroundColor(Color.gray)
                     }.padding(10).frame(maxWidth: .infinity)
                 }.padding([.bottom, .leading, .trailing], 10)
             }.onTapGesture {
@@ -278,7 +219,7 @@ struct Preferences: View {
     }
     
     struct ShortcutSettings: View {
-        var shortcut: [(String, KeyboardShortcuts.Name)] = [
+        var thing: [(String, KeyboardShortcuts.Name)] = [
             ("Record system audio".local, .recordSystemAudio),
             ("Record current display".local, .recordCurrentDisplay),
             ("Record focused window".local, .recordCurrentWindow)
@@ -287,7 +228,7 @@ struct Preferences: View {
             VStack() {
                 GroupBox() {
                     Form() {
-                        ForEach(shortcut, id: \.1) { shortcut in
+                        ForEach(thing, id: \.1) { shortcut in
                             KeyboardShortcuts.Recorder(shortcut.0, name: shortcut.1).padding([.leading, .trailing], 10).padding(.bottom, 4)
                         }
                     }.frame(alignment: .center).padding([.leading, .trailing], 2).padding(.top, 10)
@@ -298,18 +239,8 @@ struct Preferences: View {
     }
     
     struct OtherSettings: View {
+        @AppStorage(updateCheck) private var _updateCheck: Bool = true
         @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
-        @AppStorage(kUpdateCheck)   private var updateCheck: Bool = true
-        @AppStorage(kCountdownSecs) private var countDown: Int = 0
-        @AppStorage(kUseKorai)      private var useLegacyRecorder: Bool = false
-
-        private var numberFormatter: NumberFormatter {
-            let formatter = NumberFormatter()
-            formatter.numberStyle = .decimal
-            formatter.minimum = 0
-            formatter.maximum = 99
-            return formatter
-        }
 
         var body: some View {
             VStack {
@@ -328,43 +259,13 @@ struct Preferences: View {
                                 print("Failed to \(newValue ? "enable" : "disable") launch at login: \(error.localizedDescription)")
                             }
                         }
-                        Toggle(isOn: $updateCheck) {
+                        Toggle(isOn: $_updateCheck) {
                             Text("Check for updates at launch")
                         }
                     }.padding([.top, .leading, .trailing], 10).frame(width: 250)
                     Text("Azayaka will check [GitHub](https://github.com/Mnpn/Azayaka/releases) for new updates.")
                         .font(.footnote).foregroundColor(Color.gray).frame(maxWidth: .infinity).padding([.bottom, .leading, .trailing], 10)
                 }.padding([.top, .leading, .trailing], 10)
-                GroupBox() {
-                    VStack() {
-                        Form() {
-                            TextField("Countdown", value: $countDown, formatter: numberFormatter)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .padding([.leading, .trailing], 10)
-                        }.frame(maxWidth: 200)
-                        Text("Countdown to start recording, in seconds.")
-                            .font(.subheadline).foregroundColor(Color.gray)
-                    }.padding(10).frame(maxWidth: .infinity)
-                }.padding([.leading, .trailing], 10)
-                GroupBox() {
-                    if #available(macOS 15, *) {
-                        VStack(alignment: .leading) {
-                            Toggle(isOn: $useLegacyRecorder) {
-                                Text("Use legacy recorder")
-                            }
-                        }.padding([.top, .leading, .trailing], 10)
-                        Text("Since macOS Sequoia, Azayaka can use Apple's provided recorder. Select this if you want Azayaka to use its own recorder instead.")
-                            .font(.footnote).foregroundColor(Color.gray).frame(maxWidth: .infinity).padding([.bottom, .leading, .trailing], 10)
-                    } else {
-                        VStack(alignment: .leading) {
-                            Toggle(isOn: .constant(true)) {
-                                Text("Use legacy recorder")
-                            }.disabled(true)
-                        }.padding([.top, .leading, .trailing], 10)
-                        Text("Using Apple's recorder instead of Azayaka's own (\"legacy\") requires macOS Sequoia or newer.")
-                            .font(.footnote).foregroundColor(Color.gray).frame(maxWidth: .infinity).padding([.bottom, .leading, .trailing], 10)
-                    }
-                }.padding([.bottom, .leading, .trailing], 10)
                 HStack {
                     Text("Azayaka \(getVersion()) (\(getBuild()))").foregroundColor(Color.secondary)
                     Spacer()
