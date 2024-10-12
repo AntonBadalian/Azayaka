@@ -36,9 +36,10 @@ jobs:
           rm -rf build/artifacts
           mkdir -p build/artifacts
           cp -r ./build_output build/artifacts/
+          ls -a build/artifacts/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: release-artifacts
-          path: /build/artifacts
+          path: /build/artifacts/
