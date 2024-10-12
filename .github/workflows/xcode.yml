@@ -19,7 +19,7 @@ jobs:
 
       - name: Build macOS app
         run: |
-          xcodebuild -scheme YourSchemeName \
+          xcodebuild -scheme Azayaka \
           -destination 'platform=macOS,arch=arm64,name=My Mac' \
           -sdk macosx \
           -configuration Release \
