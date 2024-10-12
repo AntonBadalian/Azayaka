@@ -30,10 +30,10 @@ jobs:
       - name: Archive app
         run: |
           mkdir -p build/artifacts
-          cp -r ./build/Release/YourApp.app build/artifacts/
+          cp -r ./build/ build/artifacts/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-          name: mac-app
-          path: build/artifacts/YourApp.app
+          name: release-artifacts
+          path: build/artifacts/
