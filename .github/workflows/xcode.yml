@@ -21,7 +21,7 @@ jobs:
         run: |
           xcodebuild -scheme Azayaka \
           -destination 'platform=macOS,arch=arm64,name=My Mac' \
-          -derivedDataPath ./build_output
+          -derivedDataPath ./build_output \
           -sdk macosx \
           -configuration Release \
           clean build \
