@@ -29,8 +29,9 @@ jobs:
 
       - name: Archive app
         run: |
+          rm -rf build/artifacts
           mkdir -p build/artifacts
-          cp -r ./build/ build/artifacts/
+          cp -r ./build/Release/* build/artifacts/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
