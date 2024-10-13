@@ -20,11 +20,11 @@ jobs:
       - name: Build macOS app
         run: |
           xcodebuild -scheme Azayaka \
-          -destination 'platform=macOS,arch=arm64,name=My Mac' \
+          -arch arm64 \
+          -arch x86_64 \
           -derivedDataPath ./build_output \
           -sdk macosx \
-          -configuration Release \
-          clean build \
+          -configuration Release clean build \
           -verbose \
           CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
